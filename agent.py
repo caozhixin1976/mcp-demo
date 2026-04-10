@@ -119,25 +119,26 @@ async def run_agent(user_input: str, system_prompt: str, mcp_tools: list, sessio
 
         # Claude 要调用工具
         if resp.stop_reason == "tool_use":
-            # 把 Claude 的回应加入消息历史
             messages.append({"role": "assistant", "content": resp.content})
 
-            # 执行每个工具调用
             tool_results = []
             for block in resp.content:
                 if block.type == "tool_use":
-                    print(f"[MCP] Claude 调用工具: {block.name}({block.input})")
-                    # ★ 通过 MCP Session 调用工具（真正的 MCP 调用）
+                    print(f"\n┌─ 第{turn+1}轮工具调用 {'─'*35}")
+                    print(f"│  工具名称：{block.name}")
+                    print(f"│  传入参数：{block.input if block.input else '（无参数）'}")
+                    print(f"├─ MCP Server 返回 {'─'*35}")
                     result = await session.call_tool(block.name, block.input)
                     result_text = result.content[0].text if result.content else "无返回"
-                    print(f"[MCP] 工具返回:\n{result_text}")
+                    for line in result_text.splitlines():
+                        print(f"│  {line}")
+                    print(f"└{'─'*50}")
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
                         "content": result_text
                     })
 
-            # 把工具结果还给 Claude 继续推理
             messages.append({"role": "user", "content": tool_results})
 
     return "（Agent 达到最大推理轮数）"
